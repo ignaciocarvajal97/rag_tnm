@@ -12,6 +12,7 @@ from rag_tnm.catalog_loader import load_catalog_dir
 from rag_tnm.config import get_settings
 from rag_tnm.ollama_client import ollama_chat
 from rag_tnm.prompts import (
+    OLLAMA_FEWSHOT_MESSAGES,
     OLLAMA_SQL_SYSTEM,
     build_ollama_user_message,
     build_text_to_sql_prompt,
@@ -101,6 +102,7 @@ def run_ask(
             num_ctx=s.ollama_num_ctx,
             temperature=0,
             timeout_s=s.ollama_timeout_s,
+            extra_messages=OLLAMA_FEWSHOT_MESSAGES,
         )
     except httpx.ConnectError as e:
         return AskOutcome(False, llm_raw=None, error=f"Ollama no disponible ({s.ollama_base_url}): {e}")

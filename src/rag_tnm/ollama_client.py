@@ -10,16 +10,23 @@ def ollama_chat(
     user: str,
     *,
     num_ctx: int = 8192,
-    temperature: float = 0.1,
+    temperature: float = 0,
     timeout_s: float = 180.0,
+    extra_messages: list[dict] | None = None,
 ) -> str:
+    """Llama a Ollama /api/chat.
+
+    Si `extra_messages` se entrega, se inserta entre el `system` y el `user`
+    final. Útil para few-shot en formato chat (pares user/assistant).
+    """
     url = f"{base_url.rstrip('/')}/api/chat"
+    messages: list[dict] = [{"role": "system", "content": system}]
+    if extra_messages:
+        messages.extend(extra_messages)
+    messages.append({"role": "user", "content": user})
     payload = {
         "model": model,
-        "messages": [
-            {"role": "system", "content": system},
-            {"role": "user", "content": user},
-        ],
+        "messages": messages,
         "stream": False,
         "options": {"temperature": temperature, "num_ctx": num_ctx},
     }

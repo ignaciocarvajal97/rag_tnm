@@ -184,6 +184,95 @@ LIMIT 50;
 """
 
 
+OLLAMA_FEWSHOT_MESSAGES: list[dict] = [
+    # Caso 1: pregunta SIN fecha -> SQL SIN filtro de fecha (anti-sesgo)
+    {
+        "role": "user",
+        "content": "Pregunta:\ncuándo se retiró el servicio 12345",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "```sql\n"
+            "SELECT fs.fk_servicio,\n"
+            "       e.codigo,\n"
+            "       e.titulo,\n"
+            "       t.etapa_1_fecha AS fecha_retiro\n"
+            "FROM public.fact_servicios fs\n"
+            "LEFT JOIN public.etapa  e ON e.id_etapa = fs.id\n"
+            "LEFT JOIN public.\"time\" t ON t.id_time  = fs.id\n"
+            "WHERE fs.fk_servicio = 12345\n"
+            "  AND e.codigo = '1'\n"
+            "ORDER BY t.etapa_1_fecha\n"
+            "LIMIT 50;\n"
+            "```"
+        ),
+    },
+    # Caso 2: pregunta CON mes -> SQL CON filtro de mes
+    {
+        "role": "user",
+        "content": "Pregunta:\ncuántos servicios IMPO en abril 2026",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "```sql\n"
+            "SELECT COUNT(DISTINCT fs.fk_servicio) AS impo_abril_2026\n"
+            "FROM public.fact_servicios fs\n"
+            "LEFT JOIN public.caracteristicas c ON c.id_caracteristicas = fs.id\n"
+            "LEFT JOIN public.\"time\"          t ON t.id_time            = fs.id\n"
+            "WHERE TRIM(c.impo_expo) = 'IMPO'\n"
+            "  AND t.etapa_1_fecha >= DATE '2026-04-01'\n"
+            "  AND t.etapa_1_fecha <  DATE '2026-05-01';\n"
+            "```"
+        ),
+    },
+    # Caso 3: detalle de un servicio sin fecha -> SQL sin filtro de fecha
+    {
+        "role": "user",
+        "content": "Pregunta:\nlistame las etapas del servicio 99999",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "```sql\n"
+            "SELECT fs.fk_servicio,\n"
+            "       e.codigo,\n"
+            "       e.titulo,\n"
+            "       t.etapa_1_fecha AS fecha_etapa\n"
+            "FROM public.fact_servicios fs\n"
+            "LEFT JOIN public.etapa  e ON e.id_etapa = fs.id\n"
+            "LEFT JOIN public.\"time\" t ON t.id_time  = fs.id\n"
+            "WHERE fs.fk_servicio = 99999\n"
+            "ORDER BY e.codigo, t.etapa_1_fecha\n"
+            "LIMIT 100;\n"
+            "```"
+        ),
+    },
+    # Caso 4: pregunta por nombre del cliente -> SELECT cf.name, no COUNT, sin fecha
+    {
+        "role": "user",
+        "content": "Pregunta:\nquién es el cliente del servicio 87654",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "```sql\n"
+            "SELECT fs.fk_servicio,\n"
+            "       cf.name AS cliente_facturacion,\n"
+            "       cd.nombre AS cliente_despacho,\n"
+            "       cf.rut    AS cliente_rut\n"
+            "FROM public.fact_servicios fs\n"
+            "LEFT JOIN public.cliente_facturacion cf ON cf.id_customer         = fs.id\n"
+            "LEFT JOIN public.cliente_despacho    cd ON cd.id_cliente_despacho = fs.id\n"
+            "WHERE fs.fk_servicio = 87654\n"
+            "LIMIT 1;\n"
+            "```"
+        ),
+    },
+]
+
+
 def build_text_to_sql_prompt(context: str, question: str) -> str:
     return TEXT_TO_SQL_SYSTEM.format(context=context.strip(), question=question.strip())
 
