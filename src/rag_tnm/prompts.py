@@ -46,7 +46,20 @@ NO INVENTES FILTROS (CRÍTICO)
   «retiro|presentación|devolución|almacenaje» → `e.codigo`;
   «IMPO|EXPO|importación|exportación|tipo de servicio» → `c.impo_expo`;
   «en abril 2026|en marzo|últimos N días» → fecha;
-  «servicio N|fk_servicio = N|id de servicio = N» → `fs.fk_servicio = N`.
+  «servicio N|fk_servicio = N|id de servicio = N» → `fs.fk_servicio = N`;
+  «contenedor XXXX9999-9» → `TRIM(UPPER(c.numero_contenedor)) = 'XXXX9999-9'`.
+
+LITERALES Y FORMATO DE VALORES (CRÍTICO)
+- **TODO valor de tipo texto va entre comillas simples**: `= 'TCNU431549-1'`, `= 'IMPO'`,
+  `= '1'`. Nunca `= TCNU431549-1` (PG lo interpreta como columna y resta).
+- **Identificadores numéricos** (`fk_servicio`, `id`) van **sin comillas**: `fs.fk_servicio = 153342`.
+- **Número de contenedor**: vive en `caracteristicas.numero_contenedor` (varchar). Formato
+  TNM: `AAAANNNNNN-N` (4 letras, 6 dígitos, guion, 1 dígito), siempre en MAYÚSCULAS.
+  - Si el usuario lo escribe en minúsculas o con espacios, en el SQL **debes pasarlo a
+    mayúsculas y sin espacios** en el literal: `tcnu431549-1` → `'TCNU431549-1'`.
+  - Compáralo con `TRIM(UPPER(c.numero_contenedor)) = '<CODIGO>'` para tolerar suciedad.
+  - El contenedor NO está en `fact_servicios`. Hay que joinar `caracteristicas` con
+    `LEFT JOIN public.caracteristicas c ON c.id_caracteristicas = fs.id`.
 
 MAPEAR PREGUNTA → FORMA DEL SELECT
 - «cuántos / cantidad / total» → `SELECT COUNT(DISTINCT fs.fk_servicio) AS ...` o `COUNT(*)`.
@@ -88,6 +101,13 @@ ANTI-PATRONES PROHIBIDOS (NO los uses NUNCA)
      usar siempre `TRIM(c.impo_expo) = '<CODIGO>'` con el código del glosario.
 - ❌ Responder con `COUNT(...)` cuando la pregunta es «cuándo / qué fecha / fecha».
 - ❌ Añadir filtros (mes, etapa, IMPO/EXPO, estado) que el usuario no haya pedido.
+- ❌ `fs.numero_contenedor` o `fs.contenedor` (NO existen; está en
+     `caracteristicas.numero_contenedor`).
+- ❌ Comparar texto **sin comillas**: `WHERE fs.fk_servicio = tcnu431549-1` o
+     `WHERE c.impo_expo = IMPO`. Es error sintáctico/semántico de PG. Usa siempre comillas
+     simples para texto: `'TCNU431549-1'`, `'IMPO'`, `'1'`.
+- ❌ Buscar el contenedor en `stock` para preguntas de servicio (retiro, presentación,
+     devolución, IMPO/EXPO). `stock` es módulo de almacenaje físico; usa `caracteristicas`.
 
 CONCEPTOS
 - Tipo de etapa = `etapa.codigo` (texto: '0' almacenaje, '1' retiro, '2' presentación, '3' devolución).
@@ -172,6 +192,23 @@ LEFT JOIN public."time" t ON t.id_time  = fs.id
 WHERE fs.fk_servicio = 153342
 ORDER BY e.codigo, t.etapa_1_fecha
 LIMIT 100;
+```
+
+[G] **Cuándo se realizó una etapa de un CONTENEDOR concreto** (ej. «cuándo se retiró el contenedor TCNU431549-1»):
+```sql
+SELECT fs.fk_servicio,
+       c.numero_contenedor,
+       e.codigo,
+       e.titulo,
+       t.etapa_1_fecha AS fecha_etapa
+FROM public.fact_servicios fs
+LEFT JOIN public.caracteristicas c ON c.id_caracteristicas = fs.id
+LEFT JOIN public.etapa           e ON e.id_etapa           = fs.id
+LEFT JOIN public."time"          t ON t.id_time            = fs.id
+WHERE TRIM(UPPER(c.numero_contenedor)) = 'TCNU431549-1'
+  AND e.codigo = '1'              -- '0' almacenaje, '1' retiro, '2' presentación, '3' devolución
+ORDER BY t.etapa_1_fecha
+LIMIT 50;
 ```
 
 [F] **Detalle de UN servicio** (cliente, comercial, contenedor, fechas reales):
@@ -262,6 +299,31 @@ OLLAMA_FEWSHOT_MESSAGES: list[dict] = [
             "WHERE TRIM(c.impo_expo) = 'DESC'\n"
             "  AND t.etapa_1_fecha >= DATE '2026-04-01'\n"
             "  AND t.etapa_1_fecha <  DATE '2026-05-01';\n"
+            "```"
+        ),
+    },
+    # Caso 2c: pregunta por CONTENEDOR (texto, formato AAAANNNNNN-N) -> normalizar a UPPER
+    {
+        "role": "user",
+        "content": "Pregunta:\ncuando se retiro el contenedor tcnu431549-1?",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "```sql\n"
+            "SELECT fs.fk_servicio,\n"
+            "       c.numero_contenedor,\n"
+            "       e.codigo,\n"
+            "       e.titulo,\n"
+            "       t.etapa_1_fecha AS fecha_retiro\n"
+            "FROM public.fact_servicios fs\n"
+            "LEFT JOIN public.caracteristicas c ON c.id_caracteristicas = fs.id\n"
+            "LEFT JOIN public.etapa           e ON e.id_etapa           = fs.id\n"
+            "LEFT JOIN public.\"time\"          t ON t.id_time            = fs.id\n"
+            "WHERE TRIM(UPPER(c.numero_contenedor)) = 'TCNU431549-1'\n"
+            "  AND e.codigo = '1'\n"
+            "ORDER BY t.etapa_1_fecha\n"
+            "LIMIT 50;\n"
             "```"
         ),
     },
