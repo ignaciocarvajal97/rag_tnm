@@ -36,7 +36,7 @@ class Settings(BaseSettings):
     rag_collection_name: str = "dw_catalog"
 
     ollama_base_url: str = "http://127.0.0.1:11434"
-    ollama_model: str = "gemma3:4b"
+    ollama_model: str = "gemma3:12b"
     ollama_num_ctx: int = 8192
     ollama_timeout_s: float = 180.0
 
