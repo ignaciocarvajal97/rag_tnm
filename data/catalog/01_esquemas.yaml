@@ -1,0 +1,36 @@
+# Catálogo de ejemplo — reemplaza/ampliá con tablas reales del DW (DEST / PostgreSQL).
+- id: esquema-utilizacion-conductores
+  title: Esquema utilizacion_conductores
+  schema: utilizacion_conductores
+  domain: utilizacion
+  content: |
+    Área de utilización de conductores. Datos típicamente cargados desde ETL en Python
+    (módulo utilizacion/). Grano: definir por tabla al documentar (ej. un registro por
+    conductor y día, o por servicio — ajustar cuando conectes el diccionario real).
+
+    Convención: usar siempre el nombre calificado utilizacion_conductores.<tabla> en SQL.
+
+- id: esquema-movimientos-contenedores
+  title: Movimientos de contenedores
+  schema: movimientos_contenedores
+  domain: operaciones
+  content: |
+    Dominio de movimientos de contenedores (ETL movimientos_contenedores/).
+    Incluye tiempos y estados operativos según las tablas definidas en load_dw.
+
+- id: esquema-tiempos-carga
+  title: Tiempos de carga
+  schema: tiempos_carga
+  domain: operaciones
+  content: |
+    Métricas de tiempos de carga (ETL tiempos_carga/). Usar para preguntas sobre
+    duraciones, ventanas de tiempo y comparativos por periodo.
+
+- id: dw-core-dim-fact
+  title: Núcleo del DW (dimensiones y hechos)
+  schema: public
+  domain: comercial_facturacion
+  content: |
+    El pipeline dw/ carga dimensiones y hechos hacia PostgreSQL destino (DEST_DB_*).
+    Tablas de hechos y dimensiones (clientes, naves, facturas, programaciones, etc.)
+    deben documentarse aquí con columnas y FKs cuando armes el diccionario formal.

@@ -1,0 +1,35 @@
+- id: ejemplo-conteo-por-dia
+  title: Ejemplo — conteo de registros por día
+  kind: example_sql
+  domain: plantilla
+  content: |
+    Pregunta tipo: "¿Cuántos registros hay por día en una tabla de hechos con columna fecha?"
+
+    ```sql
+    SELECT fecha::date AS dia, COUNT(*) AS n
+    FROM esquema.tabla_hechos
+    WHERE fecha >= CURRENT_DATE - INTERVAL '30 days'
+    GROUP BY 1
+    ORDER BY 1;
+    ```
+
+    Nota: reemplazar esquema.tabla_hechos y columna fecha por objetos reales del catálogo.
+
+- id: ejemplo-top-clientes
+  title: Ejemplo — ranking por volumen
+  kind: example_sql
+  domain: plantilla
+  content: |
+    Pregunta tipo: "Top N clientes por monto facturado en un rango de fechas."
+
+    ```sql
+    SELECT c.id_cliente, c.nombre, SUM(f.monto) AS total
+    FROM comercial.factura f
+    JOIN comercial.cliente c ON c.id_cliente = f.id_cliente
+    WHERE f.fecha BETWEEN DATE '2025-01-01' AND DATE '2025-01-31'
+    GROUP BY c.id_cliente, c.nombre
+    ORDER BY total DESC
+    LIMIT 20;
+    ```
+
+    Nota: nombres ilustrativos; alinear con tablas reales del DW.

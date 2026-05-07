@@ -1,0 +1,141 @@
+- id: public-modelo-global-etapas
+  title: Modelo global del esquema public (enfoque etapas)
+  schema: public
+  kind: overview
+  domain: dw_core
+  content: |
+    El esquema `public` del data warehouse está **pensado en etapas de servicio**: cada fila de
+    `public.etapa` representa una etapa del flujo operativo de un **mismo servicio** (contenedor /
+    viaje). Casi todas las tablas de dimensión cuelgan de **`fk_servicio`** o se enlazan al hecho
+    `fact_servicios`, que a su vez referencia la etapa y el servicio.
+
+    **Regla de cruces por ID:** en destino, el ETL (`load_server.py`) usa con frecuencia el **mismo
+    índice surrogate** para alinear filas del mismo “evento” de carga: por ejemplo
+    `etapa.id_etapa`, `time.id_time` y varias PKs de dimensión pueden coincidir numéricamente con la
+    fila procesada. Para unir **etapa ↔ time** cuando no exista `etapa.fk_time` poblada, usar
+    **`time.id_time = etapa.id_etapa`** (validar con `information_schema` en tu BD).
+
+    **Identificador de servicio:** `fact_servicios.fk_servicio` y `time.fk_servicio` (y columnas
+    `servicio` / `fk_servicio` en dimensiones) apuntan al **id operativo del servicio** en origen.
+    `COUNT(DISTINCT fk_servicio)` cuenta servicios distintos.
+
+    **Códigos de tipo de etapa (`etapa.codigo`, origen `etapa_tipo`):** negocio TNM (filtrar como
+    **texto** `'0'`, `'1'`, … salvo que la columna sea numérica en tu instancia):
+
+    | codigo | Significado   |
+    |--------|---------------|
+    | 0      | Almacenaje    |
+    | 1      | Retiro        |
+    | 2      | Presentación  |
+    | 3      | Devolución    |
+
+    Para preguntas “por tipo de etapa”, filtrar `etapa.codigo` con el valor correspondiente.
+
+- id: public-fact-servicios-y-etapa
+  title: fact_servicios y etapa
+  schema: public
+  kind: tables
+  domain: dw_core
+  content: |
+    **`public.fact_servicios`** — Hecho principal por carga incremental.
+    - `id` (PK), `fk_servicio`, `fk_etapa`, `fk_cliente`, `fk_conductor`, `fk_comercial`, `fk_agencia`,
+      `fk_direccion`, `fk_cliente_despacho`, `fk_caracteristicas`, `fk_nave`, `estado`, `referencia`.
+    - Cruce típico a etapa: `fact_servicios.fk_etapa = etapa.id_etapa`.
+    - Cruce a dimensiones: `fact_servicios.fk_cliente = cliente_facturacion.id_customer`, etc.
+
+    **`public.etapa`** — Dimensión de etapa (una fila por etapa del servicio en el dataset).
+    - PK: `id_etapa`. En carga: columna **`servicio`** enlaza al id del servicio (equivalente lógico a
+      `fk_servicio` en otras tablas).
+    - `codigo`: tipo de etapa (0 almacenaje, 1 retiro, 2 presentación, 3 devolución).
+    - Otros campos útiles: `titulo`, `kilometros`, `atraso`, `diferencia_minutos`, `tiempo_estadia`,
+      `dias_facturacion`, `id_de_la_etapa` (id de etapa en origen), `referencia`, `fk_responsable`,
+      `posicion_tipo`, `comentarios`, `causa_atrasos`.
+
+    DDL histórico puede declarar `fk_time`, `fk_direccion_llegada`, etc.; si no están en tu BD,
+    ignorar y usar alineación por `id_etapa` + `fk_servicio` según el catálogo.
+
+- id: public-dimensiones-fk-servicio
+  title: Dimensiones public (todas por servicio)
+  schema: public
+  kind: tables
+  domain: dimensiones
+  content: |
+    Estas tablas comparten el patrón **“un registro por servicio (o por fila de carga con el mismo
+    índice)”** vía `fk_servicio`. Se unen al hecho con las FK de `fact_servicios` o directamente
+    `dim.fk_servicio = fact_servicios.fk_servicio` cuando el modelo lo permita.
+
+    **`public.cliente_facturacion`** — PK `id_customer`, `name`, `rut`, `fk_servicio`,
+    `fecha_conversion`, `antiguedad`.
+
+    **`public.cliente_despacho`** — PK `id_cliente_despacho`, `nombre`, `rut`, `fk_servicio`,
+    `fecha_conversion`, `antiguedad`.
+
+    **`public.conductor`** — PK `id_conductor`, `nombre`, `rut`, `fk_servicio`, `tipo_conductor`.
+
+    **`public.comercial`** — PK `id_comercial`, `name`, `rut`, `fk_servicio`.
+
+    **`public.agencia`** — Referenciada por `fact_servicios.fk_agencia` en DDL; PK típica
+    `id_agencia`. Confirmar columnas en destino si la tabla existe.
+
+    **`public.nave`** — PK `id_nave`, `nombre`, `fk_servicio`, `ETA_nave` (timestamptz/fecha ETA).
+
+    **`public.caracteristicas`** — PK `id_caracteristicas`, datos de contenedor/carga (`tamano_contenedor`,
+    `peso_carga`, `impo_expo`, `dry`, `numero_contenedor`, `full_lcl`), `fk_servicio`; en ETL también
+    `posicion_fila`, `posicion_columna`, `posicion`.
+
+    Valores típicos de **`impo_expo`** (tipo comercial/carga): `IMPO`, `EXPO`, `DESC`, `DEPO`, `ALM`,
+    `FLETE`, `PORT`, `STACK` (filtrar con `WHERE TRIM(impo_expo) = 'IMPO'` o el código que corresponda).
+    Para contar “servicios IMPO” en un mes, cruzar `fact_servicios.fk_caracteristicas`, `etapa`,
+    `time` y fecha en `time.etapa_1_fecha` como en otros informes mensuales.
+
+    **`public.direccion_salida`** — PK `id_direccion_salida`, `comuna`, `direccion`, `longitud`, `latitud`,
+    `fk_servicio`.
+
+    **`public.direccion_llegada`** — PK `id_direccion`, `comuna`, `direccion`, `longitud`, `latitud`,
+    `fk_servicio`.
+
+- id: public-tiempo-y-reales
+  title: Programación (time) y tiempos reales
+  schema: public
+  kind: tables
+  domain: tiempos
+  content: |
+    **`public.time`** (programación / primera etapa): PK `id_time`, `etapa_1_fecha`, `fk_servicio`.
+    Fecha de referencia frecuente para ventanas mensuales al cruzar con `etapa`.
+
+    **`public.real_time_arribo`** — PK `id_real_time`, `fecha_real_arribo`, `fk_servicio`.
+
+    **`public.real_time_salida`** — PK `id_real_time`, `fecha_real_salida`, `fk_servicio`.
+
+    Enlaces desde `etapa` dependen de si existen columnas `fk_time`, `fk_real_time_arribo`,
+    `fk_real_time_salida` en tu instancia; si no, usar **`time.id_time = etapa.id_etapa`** y el mismo
+    patrón surrogate para tablas real_* si aplica.
+
+- id: public-facturacion-y-documentos
+  title: Facturas, proformas y documentos
+  schema: public
+  kind: tables
+  domain: comercial
+  content: |
+    **`public.facturas`** — Facturación SII u operativa: `id_factura`, `sii_factura`, `sii_fecha`,
+    `total_servicio`, `total_cobros_extras`, `creacion_factura`, `actualizacion_factura`, `fk_servicio`.
+    Unir a servicios/hechos vía `fk_servicio`.
+
+    **`public.servicios_facturacion`** — Carga desde proformas (`proformas.py`): columnas como
+    `etapa_id`, `fk_servicio`, `proforma_id`, `fact_asociado_id`, `estado_proforma`, `numero_factura`,
+    `fecha_factura`, `cant_servicios`, `total_neto`, `monto_proforma`, `fecha_proforma`,
+    `empresa_nombre`, `empresa_rut`, `created_at`, `fact_estado`, nombres de cliente despacho/facturación,
+    `contenedor_numero`, `fact_fecha`, `fecha_tipo_2`. PK/conflict habitual sobre `etapa_id`.
+
+    **`public.servicios_documentos`** — Documentos asociados: `id`, `estado`, `docu`, `ruta`,
+    `createdAt`, `updatedAt`, `fk_servicio`, `fk_responsable`, `codigo_carga` (`servicios_documentos.py`).
+
+- id: public-tabla-servicios-origen
+  title: Tabla public.servicios (cuando exista)
+  schema: public
+  kind: tables
+  domain: operativo
+  content: |
+    En entornos que **replican** el catálogo operativo, puede existir **`public.servicios`** con PK
+    `id` (estado operativo, etc.). Algunas consultas del repo filtran `estado != 999`. Si la tabla **no**
+    está en destino, usar **`fact_servicios.fk_servicio`** como sustituto del id de servicio.

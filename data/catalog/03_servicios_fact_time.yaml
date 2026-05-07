@@ -1,0 +1,75 @@
+- id: public-joins-servicios-etapa-time
+  title: Cruce public.servicios + public.etapa + public.time
+  schema: public
+  kind: join_model
+  domain: servicios
+  content: |
+    En el DW, las tablas del esquema `public` se relacionan por **IDs explícitos** (no basta
+    contar solo `public.time` sin cruzar etapa y servicio).
+
+    Enlaces canónicos (validar contra `information_schema` si hay migraciones locales):
+
+    - `public.servicios.id`: identidad del servicio operativo cuando la tabla existe en destino.
+    - `public.etapa.servicio`: enlaza etapa → servicio (mismo id operativo que `time.fk_servicio` en el ETL).
+    - **Tiempo ↔ etapa:** en el DDL hay `etapa.fk_time → time.id_time`, pero en **varios destinos esa
+      columna no está creada o no se puebla**. En el pipeline `load_server.py`/`load_dimensions` el
+      **mismo índice surrogate** se usa para `id_etapa`, `id_time` y gran parte del hecho; regla
+      práctica del DW TNM: **`time.id_time = etapa.id_etapa`** hasta que `fk_time` exista y esté llena.
+    - `public.time.fk_servicio`: debe alinearse con `fact_servicios.fk_servicio` en filas coherentes.
+
+    Para preguntas del tipo «cuántos servicios distintos en un mes» con código de etapa, hay que
+    **cruzar las tres entidades** (identidad del servicio + etapa + fila tiempo), no contar solo
+    `public.time`.
+
+    **Patrón A — DW con dimensión `public.servicios` (origen operativo replicado):**
+
+    1. `public.servicios s`
+    2. `JOIN public.etapa e ON e.servicio = s.id`
+    3. `JOIN public.time t ON t.id_time = e.id_etapa` (o `e.fk_time` si existe y está poblada)
+
+    **Patrón B — muchos despliegues solo tienen el hecho `public.fact_servicios`** (sin tabla
+    `public.servicios`). Ahí el id de servicio es `fact_servicios.fk_servicio` y la etapa se enlaza
+    con `fact_servicios.fk_etapa = etapa.id_etapa` (mismo surrogate que usa el ETL en `load_server`).
+
+    ```sql
+    SELECT COUNT(DISTINCT fs.fk_servicio) AS servicios_abril_2026
+    FROM public.fact_servicios fs
+    INNER JOIN public.etapa e ON e.id_etapa = fs.fk_etapa
+    INNER JOIN public.time t ON t.id_time = e.id_etapa
+    WHERE e.codigo = '2'
+      AND t.etapa_1_fecha >= DATE '2026-04-01'
+      AND t.etapa_1_fecha <  DATE '2026-05-01';
+    ```
+
+    Variante con tabla madre `public.servicios` **si existe** en `information_schema`:
+
+    ```sql
+    SELECT COUNT(DISTINCT s.id) AS servicios_abril_2026
+    FROM public.servicios s
+    INNER JOIN public.etapa e ON e.servicio = s.id
+    INNER JOIN public.time t ON t.id_time = e.id_etapa
+    WHERE e.codigo = '2'
+      AND t.etapa_1_fecha >= DATE '2026-04-01'
+      AND t.etapa_1_fecha <  DATE '2026-05-01';
+    ```
+
+    Filtro por tipo de etapa: usar **`etapa.codigo`** como texto (`'0'` almacenaje, `'1'` retiro,
+      `'2'` presentación, `'3'` devolución). Lista completa en el catálogo `04_public_modelo_etapas`.
+
+    Opcional endurecer: `AND fs.fk_servicio = t.fk_servicio` (o `s.id = t.fk_servicio`) si los datos
+    son coherentes.
+
+    Si más adelante migras y `etapa.fk_time` está completa, puedes preferir
+    `t.id_time = e.fk_time` en lugar de `id_etapa`.
+
+    Opcional endurecer consistencia: `AND s.id = t.fk_servicio`.
+
+- id: tabla-fact-servicios-recall
+  title: Tabla fact_servicios (recuerdo de grano)
+  schema: public
+  kind: table
+  domain: servicios
+  content: |
+    `public.fact_servicios`: hecho con `fk_servicio`, `fk_etapa`, etc.; el conteo mensual pedido por
+    etapa código y fecha de tiempo se resuelve con el **triple cruce servicios-etapa-time** arriba,
+    no solo con `fact_servicios` salvo que el negocio defina otro grano.
