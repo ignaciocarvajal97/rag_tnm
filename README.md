@@ -5,7 +5,7 @@ RAG sobre el catálogo del data warehouse TNM: **ChromaDB**, **Ollama** (Text-to
 ## Requisitos
 
 - Python 3.10+
-- [Ollama](https://ollama.com) (`ollama pull qwen2.5-coder:7b` o similar)
+- [Ollama](https://ollama.com): por defecto **`gemma3:4b`** (`ollama pull gemma3:4b`). Otro modelo: variable `OLLAMA_MODEL` en `.env`.
 - Variables `DEST_DB_*` en `.env` (o en `../datawarehouse_tnm/.env` si clonas junto al ETL)
 
 ## Instalación
