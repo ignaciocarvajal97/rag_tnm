@@ -1,0 +1,390 @@
+- id: ddl-real-indice
+  title: "DDL real (pg_dump): índice de tablas"
+  schema: public
+  kind: ddl_index
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Índice de tablas reales del esquema `public` (DDL extraído con pg_dump).
+    
+    Las únicas tablas que existen son las siguientes. Cualquier tabla NO listada aquí
+    **no existe** y no debe ser usada en SQL:
+    
+    - `public.caracteristicas` (PK=id_caracteristicas, 13 columnas)
+    - `public.charlas_transportistas` (sin PK, 7 columnas)
+    - `public.cliente_despacho` (PK=id_cliente_despacho, 6 columnas)
+    - `public.cliente_facturacion` (PK=id_customer, 6 columnas)
+    - `public.comercial` (PK=id_comercial, 4 columnas)
+    - `public.conductor` (PK=id_conductor, 5 columnas)
+    - `public.direccion_llegada` (PK=id_direccion, 6 columnas)
+    - `public.direccion_salida` (PK=id_direccion_salida, 6 columnas)
+    - `public.documentacion` (PK=id_documentacion, 9 columnas)
+    - `public.etapa` (PK=id_etapa, 17 columnas)
+    - `public.fact_servicios` (PK=id, 21 columnas)
+    - `public.facturas` (PK=id_factura, 9 columnas)
+    - `public.nave` (PK=id_nave, 4 columnas)
+    - `public.real_time_arribo` (PK=id_real_time, 3 columnas)
+    - `public.real_time_salida` (PK=id_real_time, 3 columnas)
+    - `public.servicios_documentos` (PK=id, 9 columnas)
+    - `public.stock` (PK=fk_servicio, 14 columnas)
+    - `public.time` (PK=id_time, 3 columnas)
+
+- id: ddl-real-caracteristicas
+  title: "DDL real `public.caracteristicas`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.caracteristicas`.
+    PK: `id_caracteristicas`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id_caracteristicas` — integer (NOT NULL)
+    - `tamano_contenedor` — character varying(255) (NULL)
+    - `peso_carga` — character varying(255) (NULL)
+    - `impo_expo` — character varying(255) (NULL)
+    - `dry` — character varying(255) (NULL)
+    - `numero_contenedor` — character varying(255) (NULL)
+    - `full_lcl` — character varying(255) (NULL)
+    - `fk_servicio` — integer (NULL)
+    - `posicion_fila` — text (NULL)
+    - `posicion_columna` — text (NULL)
+    - `posicion` — text (NULL)
+    - `contenedor_vaciolleno` — text (NULL)
+    - `tipo_movimiento` — text (NULL)
+
+- id: ddl-real-charlas_transportistas
+  title: "DDL real `public.charlas_transportistas`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.charlas_transportistas`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `TRASPORTE` — text (NULL)
+    - `RUT` — text (NULL)
+    - `NOMBRE CONDUCTOR` — text (NULL)
+    - `CHARLA /TIPO` — text (NULL)
+    - `FECHA` — text (NULL)
+    - `MES` — text (NULL)
+    - `ESTADO` — double precision (NULL)
+
+- id: ddl-real-cliente_despacho
+  title: "DDL real `public.cliente_despacho`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.cliente_despacho`.
+    PK: `id_cliente_despacho`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id_cliente_despacho` — integer (NOT NULL)
+    - `nombre` — character varying(255) (NULL)
+    - `rut` — character varying(255) (NULL)
+    - `fk_servicio` — integer (NULL)
+    - `fecha_conversion` — timestamp with time zone (NULL)
+    - `antiguedad` — text (NULL)
+
+- id: ddl-real-cliente_facturacion
+  title: "DDL real `public.cliente_facturacion`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.cliente_facturacion`.
+    PK: `id_customer`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id_customer` — integer (NOT NULL)
+    - `name` — character varying(255) (NULL)
+    - `rut` — character varying(255) (NULL)
+    - `fk_servicio` — integer (NULL)
+    - `fecha_conversion` — date (NULL)
+    - `antiguedad` — text (NULL)
+
+- id: ddl-real-comercial
+  title: "DDL real `public.comercial`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.comercial`.
+    PK: `id_comercial`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id_comercial` — integer (NOT NULL)
+    - `name` — character varying(255) (NULL)
+    - `rut` — character varying(255) (NULL)
+    - `fk_servicio` — integer (NULL)
+
+- id: ddl-real-conductor
+  title: "DDL real `public.conductor`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.conductor`.
+    PK: `id_conductor`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id_conductor` — integer (NOT NULL)
+    - `nombre` — character varying(255) (NULL)
+    - `rut` — character varying(255) (NULL)
+    - `fk_servicio` — integer (NULL)
+    - `tipo_conductor` — text (NULL)
+
+- id: ddl-real-direccion_llegada
+  title: "DDL real `public.direccion_llegada`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.direccion_llegada`.
+    PK: `id_direccion`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id_direccion` — integer (NOT NULL)
+    - `comuna` — character varying(255) (NULL)
+    - `direccion` — character varying(255) (NULL)
+    - `fk_servicio` — integer (NULL)
+    - `longitud` — text (NULL)
+    - `latitud` — text (NULL)
+
+- id: ddl-real-direccion_salida
+  title: "DDL real `public.direccion_salida`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.direccion_salida`.
+    PK: `id_direccion_salida`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id_direccion_salida` — integer (NOT NULL)
+    - `comuna` — character varying(255) (NULL)
+    - `direccion` — character varying(255) (NULL)
+    - `fk_servicio` — integer (NULL)
+    - `longitud` — text (NULL)
+    - `latitud` — text (NULL)
+
+- id: ddl-real-documentacion
+  title: "DDL real `public.documentacion`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.documentacion`.
+    PK: `id_documentacion`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id_documentacion` — integer (NOT NULL)
+    - `docu` — text (NULL)
+    - `ruta` — text (NULL)
+    - `kpi_docu` — integer (NULL)
+    - `creacion_documentacion` — timestamp without time zone (NULL)
+    - `actualizacion_documentacion` — timestamp without time zone (NULL)
+    - `responsable_documentacion` — text (NULL)
+    - `codigo_carga` — text (NULL)
+    - `fk_servicio` — integer (NULL)
+
+- id: ddl-real-etapa
+  title: "DDL real `public.etapa`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.etapa`.
+    PK: `id_etapa`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id_etapa` — integer (NOT NULL)
+    - `titulo` — character varying(255) (NULL)
+    - `codigo` — character varying(255) (NULL)
+    - `kilometros` — double precision (NULL)
+    - `atraso` — character varying(255) (NULL)
+    - `diferencia_minutos` — double precision (NULL)
+    - `tiempo_estadia` — double precision (NULL)
+    - `servicio` — integer (NULL)
+    - `dias_facturacion` — double precision (NULL)
+    - `atraso_auto` — text (NULL)
+    - `diferencia_minutos_auto` — numeric (NULL)
+    - `causa_atrasos` — text (NULL)
+    - `comentarios` — text (NULL)
+    - `id_de_la_etapa` — numeric (NULL)
+    - `posicion_tipo` — text (NULL)
+    - `referencia` — text (NULL)
+    - `fk_responsable` — text (NULL)
+
+- id: ddl-real-fact_servicios
+  title: "DDL real `public.fact_servicios`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.fact_servicios`.
+    PK: `id`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `fk_cliente` — integer (NULL)
+    - `fk_conductor` — integer (NULL)
+    - `fk_comercial` — integer (NULL)
+    - `fk_agencia` — integer (NULL)
+    - `fk_etapa` — integer (NULL)
+    - `fk_servicio` — integer (NULL)
+    - `fk_direccion` — integer (NULL)
+    - `fk_cliente_despacho` — integer (NULL)
+    - `fk_caracteristicas` — integer (NULL)
+    - `fk_nave` — integer (NULL)
+    - `id` — integer (NOT NULL)
+    - `en_sitio` — text (NULL)
+    - `horas_almacenamiento` — numeric (NULL)
+    - `fecha_cierre_servicio` — date (NULL)
+    - `horas_entre_entrega_guia` — numeric (NULL)
+    - `horas_entre_entrega_eir` — numeric (NULL)
+    - `horas_entre_guia_factura` — numeric (NULL)
+    - `horas_entre_eir_factura` — numeric (NULL)
+    - `horas_fecha_cierre` — numeric (NULL)
+    - `estado` — text (NULL)
+    - `referencia` — text (NULL)
+
+- id: ddl-real-facturas
+  title: "DDL real `public.facturas`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.facturas`.
+    PK: `id_factura`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id_factura` — bigint (NOT NULL)
+    - `sii_fecha` — date (NULL)
+    - `total_servicio` — numeric (NULL)
+    - `total_cobros_extras` — numeric (NULL)
+    - `creacion_factura` — date (NULL)
+    - `actualizacion_factura` — date (NULL)
+    - `sii_factura` — text (NULL)
+    - `kpi_factura` — numeric (NULL)
+    - `fk_servicio` — bigint (NULL)
+
+- id: ddl-real-nave
+  title: "DDL real `public.nave`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.nave`.
+    PK: `id_nave`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id_nave` — integer (NOT NULL)
+    - `nombre` — text (NULL)
+    - `fk_servicio` — integer (NULL)
+    - `ETA_nave` — date (NULL)
+
+- id: ddl-real-real_time_arribo
+  title: "DDL real `public.real_time_arribo`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.real_time_arribo`.
+    PK: `id_real_time`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id_real_time` — integer (NOT NULL)
+    - `fecha_real_arribo` — timestamp without time zone (NULL)
+    - `fk_servicio` — integer (NULL)
+
+- id: ddl-real-real_time_salida
+  title: "DDL real `public.real_time_salida`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.real_time_salida`.
+    PK: `id_real_time`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id_real_time` — integer (NOT NULL)
+    - `fecha_real_salida` — timestamp without time zone (NULL)
+    - `fk_servicio` — integer (NULL)
+
+- id: ddl-real-servicios_documentos
+  title: "DDL real `public.servicios_documentos`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.servicios_documentos`.
+    PK: `id`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id` — bigint (NOT NULL)
+    - `estado` — smallint (NULL)
+    - `docu` — character varying(50) (NULL)
+    - `ruta` — character varying(255) (NULL)
+    - `createdAt` — timestamp without time zone (NULL)
+    - `updatedAt` — timestamp without time zone (NULL)
+    - `fk_servicio` — bigint (NULL)
+    - `fk_responsable` — character varying(20) (NULL)
+    - `codigo_carga` — character varying(50) (NULL)
+
+- id: ddl-real-stock
+  title: "DDL real `public.stock`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.stock`.
+    PK: `fk_servicio`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `fk_servicio` — integer (NOT NULL)
+    - `numero_contenedor` — character varying (NULL)
+    - `estado` — integer (NULL)
+    - `cont_fila` — character varying (NULL)
+    - `cont_columna` — character varying (NULL)
+    - `cont_posicion` — character varying (NULL)
+    - `posicion_ubicacion` — character varying (NULL)
+    - `cont_tipo_mov` — character varying (NULL)
+    - `cont_tipo` — character varying (NULL)
+    - `cont_fecha` — date (NULL)
+    - `cont_hora` — time without time zone (NULL)
+    - `almacenaje_principal` — character varying (NULL)
+    - `estado_contenedor` — character varying (NULL)
+    - `tiempo_estadia` — character varying (NULL)
+
+- id: ddl-real-time
+  title: "DDL real `public.time`"
+  schema: public
+  kind: ddl_table
+  domain: ddl
+  source: pg_dump --schema-only public
+  content: |
+    Tabla `public.time`.
+    PK: `id_time`.
+    
+    Columnas (nombre — tipo, NOT NULL?):
+    - `id_time` — integer (NOT NULL)
+    - `etapa_1_fecha` — timestamp without time zone (NULL)
+    - `fk_servicio` — integer (NULL)
