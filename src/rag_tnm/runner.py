@@ -105,7 +105,14 @@ def run_ask(
     except httpx.ConnectError as e:
         return AskOutcome(False, llm_raw=None, error=f"Ollama no disponible ({s.ollama_base_url}): {e}")
     except httpx.HTTPStatusError as e:
-        return AskOutcome(False, error=f"Ollama HTTP {e.response.status_code}: {e.response.text}")
+        body = (e.response.text or "").strip()
+        hint = ""
+        if e.response.status_code == 404:
+            hint = (
+                f" Ejecute: ollama pull {s.ollama_model}   "
+                f"o defina otro modelo en .env con OLLAMA_MODEL=nombre (ver modelos instalados: ollama list)."
+            )
+        return AskOutcome(False, error=f"Ollama HTTP {e.response.status_code}: {body}{hint}")
     except Exception as e:
         return AskOutcome(False, error=f"Error Ollama: {e}")
 

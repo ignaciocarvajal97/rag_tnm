@@ -6,18 +6,30 @@
   content: |
     El esquema `public` del data warehouse está **pensado en etapas de servicio**: cada fila de
     `public.etapa` representa una etapa del flujo operativo de un **mismo servicio** (contenedor /
-    viaje). Casi todas las tablas de dimensión cuelgan de **`fk_servicio`** o se enlazan al hecho
-    `fact_servicios`, que a su vez referencia la etapa y el servicio.
+    viaje). Las dimensiones se conectan al hecho `fact_servicios` por **PK alineada con
+    `fact_servicios.id`** (regla canónica de este DW).
 
-    **Regla de cruces por ID:** en destino, el ETL (`load_server.py`) usa con frecuencia el **mismo
-    índice surrogate** para alinear filas del mismo “evento” de carga: por ejemplo
-    `etapa.id_etapa`, `time.id_time` y varias PKs de dimensión pueden coincidir numéricamente con la
-    fila procesada. Para unir **etapa ↔ time** cuando no exista `etapa.fk_time` poblada, usar
-    **`time.id_time = etapa.id_etapa`** (validar con `information_schema` en tu BD).
+    **Regla de cruces por ID (canónica del DW TNM):** el ETL (`load_server.py` /
+    `load_dimensions`) **reutiliza el mismo surrogate** para alinear `fact_servicios.id` con la PK
+    de cada dimensión: `etapa.id_etapa`, `caracteristicas.id_caracteristicas`, `time.id_time`,
+    `cliente_facturacion.id_customer`, `cliente_despacho.id_cliente_despacho`, `comercial.id_comercial`,
+    `conductor.id_conductor`, `nave.id_nave`, etc. Por eso el JOIN canónico es siempre
+    **`dim.id_<dim> = public.fact_servicios.id`** (no por `fk_*`). Las `fk_*` de `fact_servicios` se
+    usan para conteos/filtros (ej. `fk_servicio` para `COUNT(DISTINCT)`), no como llaves de unión.
 
     **Identificador de servicio:** `fact_servicios.fk_servicio` y `time.fk_servicio` (y columnas
     `servicio` / `fk_servicio` en dimensiones) apuntan al **id operativo del servicio** en origen.
     `COUNT(DISTINCT fk_servicio)` cuenta servicios distintos.
+
+    **Tipo de servicio comercial («tipos de servicios», importación / exportación, IMPO / EXPO):**
+    vive en **`public.caracteristicas.impo_expo`**, enlazado al hecho con el JOIN canónico
+    **`caracteristicas.id_caracteristicas = fact_servicios.id`** (no por `fk_caracteristicas`).
+    Si la pregunta dice «tipos de servicios» o «por tipo de servicio» **sin** mencionar
+    almacenaje/retiro/presentación/devolución, asumir **este** significado (no `etapa.codigo`).
+    Códigos típicos: `IMPO` (importación), `EXPO` (exportación), y otros como `DESC`, `DEPO`, `ALM`,
+    `FLETE`, `PORT`, `STACK`. Preguntas “servicios de importación”, “tipo EXPO”, “cuántos por tipo
+    de servicio” deben **unir `caracteristicas`** y filtrar/agrupar **`TRIM(caracteristicas.impo_expo)`**;
+    sumar `etapa` y `time` solo si el negocio pide también etapa o período.
 
     **Códigos de tipo de etapa (`etapa.codigo`, origen `etapa_tipo`):** negocio TNM (filtrar como
     **texto** `'0'`, `'1'`, … salvo que la columna sea numérica en tu instancia):
@@ -39,9 +51,15 @@
   content: |
     **`public.fact_servicios`** — Hecho principal por carga incremental.
     - `id` (PK), `fk_servicio`, `fk_etapa`, `fk_cliente`, `fk_conductor`, `fk_comercial`, `fk_agencia`,
-      `fk_direccion`, `fk_cliente_despacho`, `fk_caracteristicas`, `fk_nave`, `estado`, `referencia`.
-    - Cruce típico a etapa: `fact_servicios.fk_etapa = etapa.id_etapa`.
-    - Cruce a dimensiones: `fact_servicios.fk_cliente = cliente_facturacion.id_customer`, etc.
+      `fk_direccion`, `fk_cliente_despacho`, `fk_caracteristicas`, `fk_nave`, `estado`, `referencia`,
+      además de métricas (`en_sitio`, `horas_almacenamiento`, `fecha_cierre_servicio`, `horas_*`).
+    - **Cruce canónico a cualquier dimensión:** `dim.id_<dim> = fact_servicios.id`. Por ejemplo
+      `etapa.id_etapa = fact_servicios.id`, `caracteristicas.id_caracteristicas = fact_servicios.id`,
+      `time.id_time = fact_servicios.id`, `cliente_facturacion.id_customer = fact_servicios.id`,
+      `cliente_despacho.id_cliente_despacho = fact_servicios.id`, `comercial.id_comercial = fact_servicios.id`,
+      `conductor.id_conductor = fact_servicios.id`, `nave.id_nave = fact_servicios.id`, etc.
+    - Las columnas `fk_*` se usan para identidad operativa y conteos
+      (`COUNT(DISTINCT fk_servicio)`), **no** como llaves físicas a las dimensiones.
 
     **`public.etapa`** — Dimensión de etapa (una fila por etapa del servicio en el dataset).
     - PK: `id_etapa`. En carga: columna **`servicio`** enlaza al id del servicio (equivalente lógico a
@@ -52,7 +70,8 @@
       `posicion_tipo`, `comentarios`, `causa_atrasos`.
 
     DDL histórico puede declarar `fk_time`, `fk_direccion_llegada`, etc.; si no están en tu BD,
-    ignorar y usar alineación por `id_etapa` + `fk_servicio` según el catálogo.
+    ignorar y usar alineación canónica `id_etapa = fact_servicios.id` (igual para `time.id_time`
+    y demás dimensiones).
 
 - id: public-dimensiones-fk-servicio
   title: Dimensiones public (todas por servicio)
@@ -61,8 +80,10 @@
   domain: dimensiones
   content: |
     Estas tablas comparten el patrón **“un registro por servicio (o por fila de carga con el mismo
-    índice)”** vía `fk_servicio`. Se unen al hecho con las FK de `fact_servicios` o directamente
-    `dim.fk_servicio = fact_servicios.fk_servicio` cuando el modelo lo permita.
+    índice)”**. **Regla canónica de JOIN al hecho:** `dim.id_<dim> = fact_servicios.id` (mismo
+    surrogate del ETL). La columna `fk_servicio` de las dimensiones es el id operativo en origen y
+    sirve para validaciones extra o para enlazar entre dimensiones por servicio, **no** como llave de
+    JOIN al hecho.
 
     **`public.cliente_facturacion`** — PK `id_customer`, `name`, `rut`, `fk_servicio`,
     `fecha_conversion`, `antiguedad`.
@@ -80,13 +101,19 @@
     **`public.nave`** — PK `id_nave`, `nombre`, `fk_servicio`, `ETA_nave` (timestamptz/fecha ETA).
 
     **`public.caracteristicas`** — PK `id_caracteristicas`, datos de contenedor/carga (`tamano_contenedor`,
-    `peso_carga`, `impo_expo`, `dry`, `numero_contenedor`, `full_lcl`), `fk_servicio`; en ETL también
-    `posicion_fila`, `posicion_columna`, `posicion`.
+    `peso_carga`, **`impo_expo`** (tipo de servicio **IMPO / EXPO** y otros), `dry`,
+    `numero_contenedor`, `full_lcl`), `fk_servicio`; en ETL también `posicion_fila`, `posicion_columna`,
+    `posicion`.
 
-    Valores típicos de **`impo_expo`** (tipo comercial/carga): `IMPO`, `EXPO`, `DESC`, `DEPO`, `ALM`,
-    `FLETE`, `PORT`, `STACK` (filtrar con `WHERE TRIM(impo_expo) = 'IMPO'` o el código que corresponda).
-    Para contar “servicios IMPO” en un mes, cruzar `fact_servicios.fk_caracteristicas`, `etapa`,
-    `time` y fecha en `time.etapa_1_fecha` como en otros informes mensuales.
+    **`impo_expo` es la columna de “tipo de servicio” IMPO vs EXPO** (importación vs exportación en
+    negocio). Otros valores frecuentes: `DESC`, `DEPO`, `ALM`, `FLETE`, `PORT`, `STACK`. Ejemplos:
+    `WHERE TRIM(c.impo_expo) = 'IMPO'`, `= 'EXPO'`. Cruzar siempre con el **JOIN canónico**
+    `FROM public.fact_servicios fs INNER JOIN public.caracteristicas c ON c.id_caracteristicas = fs.id`
+    cuando la pregunta mencione tipo de servicio, importación, exportación, IMPO o EXPO.
+
+    Para contar “servicios IMPO en un mes”, unir **`fact_servicios` + `caracteristicas` + `time`**
+    (más `etapa` si el negocio pide etapa), todos por `dim.id_<dim> = fs.id`, filtrar `impo_expo` y
+    fechas sobre `time.etapa_1_fecha`.
 
     **`public.direccion_salida`** — PK `id_direccion_salida`, `comuna`, `direccion`, `longitud`, `latitud`,
     `fk_servicio`.
@@ -107,9 +134,9 @@
 
     **`public.real_time_salida`** — PK `id_real_time`, `fecha_real_salida`, `fk_servicio`.
 
-    Enlaces desde `etapa` dependen de si existen columnas `fk_time`, `fk_real_time_arribo`,
-    `fk_real_time_salida` en tu instancia; si no, usar **`time.id_time = etapa.id_etapa`** y el mismo
-    patrón surrogate para tablas real_* si aplica.
+    Enlaces canónicos al hecho: `time.id_time = fact_servicios.id`,
+    `real_time_arribo.id_real_time = fact_servicios.id`,
+    `real_time_salida.id_real_time = fact_servicios.id` (mismo patrón surrogate del ETL).
 
 - id: public-facturacion-y-documentos
   title: Facturas, proformas y documentos
