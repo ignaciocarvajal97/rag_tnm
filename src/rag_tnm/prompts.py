@@ -80,14 +80,33 @@ ANTI-PATRONES PROHIBIDOS (NO los uses NUNCA)
 - ❌ `WHERE fs.fecha …` o `WHERE fact_servicios.fecha …`
      (la columna `fact_servicios.fecha` NO EXISTE; la fecha está en `time.etapa_1_fecha`,
       hay que hacer `LEFT JOIN public."time" t ON t.id_time = fs.id` y filtrar `t.etapa_1_fecha`).
+- ❌ `fs.caracteristicas` o `fact_servicios.caracteristicas` (esa columna NO EXISTE; el tipo de
+     servicio está en `caracteristicas.impo_expo` tras el JOIN canónico
+     `LEFT JOIN public.caracteristicas c ON c.id_caracteristicas = fs.id`).
+- ❌ `fs.impo_expo` o `fact_servicios.impo_expo` (no existe; está en la dimensión `caracteristicas`).
+- ❌ Filtrar tipos de servicio con `NOT LIKE` / listas de exclusión cuando hay un código exacto;
+     usar siempre `TRIM(c.impo_expo) = '<CODIGO>'` con el código del glosario.
 - ❌ Responder con `COUNT(...)` cuando la pregunta es «cuándo / qué fecha / fecha».
 - ❌ Añadir filtros (mes, etapa, IMPO/EXPO, estado) que el usuario no haya pedido.
 
 CONCEPTOS
 - Tipo de etapa = `etapa.codigo` (texto: '0' almacenaje, '1' retiro, '2' presentación, '3' devolución).
-- Tipo de servicio comercial / importación / exportación / IMPO / EXPO / «tipos de servicios» =
-  `caracteristicas.impo_expo`. Para esto es OBLIGATORIO unir `caracteristicas` por id (canónico)
-  y filtrar/agrupar por `TRIM(c.impo_expo)` (valores: 'IMPO','EXPO','DESC','DEPO','ALM',...).
+- Tipo de servicio comercial = `caracteristicas.impo_expo` (NO es un campo de `fact_servicios`).
+  Para usarlo SIEMPRE haz `LEFT JOIN public.caracteristicas c ON c.id_caracteristicas = fs.id`
+  y filtra/agrupa por `TRIM(c.impo_expo)`.
+
+GLOSARIO TÉRMINO DE NEGOCIO → VALOR EN `caracteristicas.impo_expo`
+- importación, IMPO, import                                    -> 'IMPO'
+- exportación, EXPO, export                                    -> 'EXPO'
+- desconsolidado, desconsolidación, DESC                       -> 'DESC'
+- depósito, DEPO                                               -> 'DEPO'
+- almacenaje (en sentido COMERCIAL, no la etapa), ALM          -> 'ALM'
+- flete, FLETE                                                 -> 'FLETE'
+- portuario, PORT                                              -> 'PORT'
+- stacking, STACK                                              -> 'STACK'
+Si el usuario nombra una de estas categorías, filtra `TRIM(c.impo_expo) = '<CODIGO>'`.
+Si dice «por tipo de servicio» o «tipos de servicios» (sin acotar), agrupa por
+`TRIM(c.impo_expo)` y devuelve la cuenta por categoría.
 
 PLANTILLAS CANÓNICAS (cópialas y adapta — no inventes columnas)
 
@@ -222,6 +241,25 @@ OLLAMA_FEWSHOT_MESSAGES: list[dict] = [
             "LEFT JOIN public.caracteristicas c ON c.id_caracteristicas = fs.id\n"
             "LEFT JOIN public.\"time\"          t ON t.id_time            = fs.id\n"
             "WHERE TRIM(c.impo_expo) = 'IMPO'\n"
+            "  AND t.etapa_1_fecha >= DATE '2026-04-01'\n"
+            "  AND t.etapa_1_fecha <  DATE '2026-05-01';\n"
+            "```"
+        ),
+    },
+    # Caso 2b: termino de negocio mapeado a impo_expo (desconsolidado -> 'DESC')
+    {
+        "role": "user",
+        "content": "Pregunta:\ncuántos servicios de desconsolidado hicimos en abril 2026",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "```sql\n"
+            "SELECT COUNT(DISTINCT fs.fk_servicio) AS desc_abril_2026\n"
+            "FROM public.fact_servicios fs\n"
+            "LEFT JOIN public.caracteristicas c ON c.id_caracteristicas = fs.id\n"
+            "LEFT JOIN public.\"time\"          t ON t.id_time            = fs.id\n"
+            "WHERE TRIM(c.impo_expo) = 'DESC'\n"
             "  AND t.etapa_1_fecha >= DATE '2026-04-01'\n"
             "  AND t.etapa_1_fecha <  DATE '2026-05-01';\n"
             "```"
