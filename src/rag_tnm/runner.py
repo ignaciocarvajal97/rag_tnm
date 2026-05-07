@@ -99,7 +99,7 @@ def run_ask(
             OLLAMA_SQL_SYSTEM,
             user_msg,
             num_ctx=s.ollama_num_ctx,
-            temperature=0.05,
+            temperature=0,
             timeout_s=s.ollama_timeout_s,
         )
     except httpx.ConnectError as e:
